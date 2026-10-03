@@ -45,3 +45,4 @@ const socialLinks = [
     <Footer :copyright="`© ${new Date().getFullYear()} Rumah Nafasy. Seluruh hak dilindungi.`" :social-links="socialLinks" />
   </div>
 </template>
+

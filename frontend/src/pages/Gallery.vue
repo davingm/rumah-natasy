@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-type GalleryPhoto = { src: string; alt: string; title: string; description: string; category: string }
+type GalleryPhoto = { src: string; thumbnail: string; alt: string; title: string; description: string; category: string }
 
 const filenames = [
   'WhatsApp Image 2026-09-23 at 11.04.51 (1).jpeg', 'WhatsApp Image 2026-09-23 at 11.04.51 (2).jpeg', 'WhatsApp Image 2026-09-23 at 11.04.51.jpeg',
@@ -29,6 +29,7 @@ const photos: GalleryPhoto[] = filenames.map((filename, index) => {
   const moment = moments[index % moments.length]
   return {
     src: `/images/album/${encodeURIComponent(filename)}`,
+    thumbnail: `/images/album/thumbs/${encodeURIComponent(filename.replace(/\.jpe?g$/i, '.webp'))}`,
     alt: `${moment[0]} — dokumentasi Rumah Nafasy`,
     title: moment[0],
     description: moment[1],
@@ -38,10 +39,21 @@ const photos: GalleryPhoto[] = filenames.map((filename, index) => {
 
 const activePhoto = ref<GalleryPhoto | null>(null)
 const selectedCategory = ref('Semua')
+const visibleCount = ref(12)
+const pageSize = 12
 const categories = ['Semua', 'Cerita', 'Komunitas', 'Kegiatan', 'Keseharian']
-const visiblePhotos = computed(() => selectedCategory.value === 'Semua'
+const filteredPhotos = computed(() => selectedCategory.value === 'Semua'
   ? photos
   : photos.filter(photo => photo.category === selectedCategory.value))
+const visiblePhotos = computed(() => filteredPhotos.value.slice(0, visibleCount.value))
+const hasMorePhotos = computed(() => visibleCount.value < filteredPhotos.value.length)
+
+function selectCategory(category: string) {
+  selectedCategory.value = category
+  visibleCount.value = pageSize
+}
+
+function loadMorePhotos() { visibleCount.value += pageSize }
 
 function closeModal() { activePhoto.value = null }
 function onKeydown(event: KeyboardEvent) { if (event.key === 'Escape') closeModal() }
@@ -85,14 +97,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <div class="gallery-count"><span class="gallery-count__dot"></span>{{ visiblePhotos.length }} momen</div>
       </div>
       <div class="filters" role="group" aria-label="Filter galeri">
-        <button v-for="category in categories" :key="category" type="button" :class="{ 'is-active': selectedCategory === category }" @click="selectedCategory = category">{{ category }}</button>
+        <button v-for="category in categories" :key="category" type="button" :class="{ 'is-active': selectedCategory === category }" @click="selectCategory(category)">{{ category }}</button>
       </div>
       <div class="photo-grid">
         <button v-for="(photo, index) in visiblePhotos" :key="photo.src" class="photo-tile" type="button" :aria-label="`Lihat cerita: ${photo.title}`" @click="activePhoto = photo">
-          <img :src="photo.src" :alt="photo.alt" :loading="index < 6 ? 'eager' : 'lazy'">
+          <img :src="photo.thumbnail" :alt="photo.alt" :loading="index < 3 ? 'eager' : 'lazy'" decoding="async" :fetchpriority="index === 0 ? 'high' : 'auto'">
           <span class="photo-tile__veil"><span class="photo-tile__detail">Lihat cerita <span aria-hidden="true">↗</span></span></span>
         </button>
       </div>
+      <button v-if="hasMorePhotos" class="gallery-more" type="button" @click="loadMorePhotos">Muat momen berikutnya</button>
       <div class="gallery-note"><span class="gallery-note__line"></span><p>Setiap perjalanan dimulai dari satu langkah kecil.</p><span class="gallery-note__line"></span></div>
     </section>
 
@@ -151,6 +164,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 .filters button:hover { color: var(--ink); }
 .filters button.is-active { border-color: var(--line); background: var(--surface); color: var(--ink); font-weight: 600; }
 .photo-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; }
+.gallery-more { display: block; min-height: 40px; margin: 24px auto 0; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.gallery-more:hover { border-color: var(--gallery-green); }
 .photo-tile { position: relative; display: block; aspect-ratio: 1; min-width: 0; padding: 0; overflow: hidden; border: 0; border-radius: 0; background: var(--surface); cursor: pointer; isolation: isolate; }
 .photo-tile img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.2,.7,.2,1), filter .3s; }
 .photo-tile__veil { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg,transparent 35%,rgb(10 25 18 / 50%)); opacity: 0; transition: opacity .25s; }
