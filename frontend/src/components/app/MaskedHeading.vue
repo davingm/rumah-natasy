@@ -10,7 +10,7 @@ export type Trigger = 'view' | 'mount' | 'hover';
 interface MaskedHeadingProps {
   text?: string;
   tag?: string;
-  mediaType?: 'image' | 'video';
+  mediaType?: 'image' | 'video' | 'youtube';
   src?: string;
   poster?: string;
   fillScale?: number;
@@ -349,6 +349,15 @@ watch(
             muted
             loop
             playsinline
+          />
+          <iframe
+            v-else-if="mediaType === 'youtube'"
+            class="block w-full h-full border-0 select-none pointer-events-none"
+            :src="src"
+            title="Video YouTube"
+            allow="autoplay; encrypted-media; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
           />
           <img v-else class="block w-full h-full object-cover select-none" :src="src" alt="" :draggable="false" />
         </span>
