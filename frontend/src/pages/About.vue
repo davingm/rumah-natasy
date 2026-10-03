@@ -58,7 +58,7 @@ const communityPhotos = [
           :weight="680"
           :tracking="-0.045"
           :line-height="0.9"
-          :text-scale="0.13"
+          :text-scale="0.09"
           :duration="1.25"
           :stagger="0.06"
         />
@@ -142,12 +142,12 @@ const communityPhotos = [
 .about-hero { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: center; width: 100vw; min-height: clamp(680px, 88svh, 980px); margin-left: calc(50% - 50vw); padding: 148px max(24px, calc((100vw - 1280px) / 2 + 32px)) 72px; overflow: hidden; background: var(--about-hero-background); color: var(--about-hero-foreground); transition: background-color 220ms ease, color 220ms ease; }
 .about-hero--light { --about-hero-background: #f4f4f0; --about-hero-foreground: #171717; }
 .about-hero--dark { --about-hero-background: #080808; --about-hero-foreground: #fff; }
-.about-hero__content { position: relative; z-index: 0; width: min(100%, 1180px); text-align: center; }
+.about-hero__content { position: relative; z-index: 0; width: min(100%, 1480px); text-align: center; }
 .about-hero__content::before { content: ''; position: absolute; left: 50%; top: 52%; width: calc(100vw - 24px); height: clamp(360px, 44vw, 620px); transform: translate(-50%, -50%); border-radius: 28px; background: #000; z-index: 0; pointer-events: none; }
 .about-eyebrow,.about-section-label { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .about-eyebrow { position: relative; z-index: 1; justify-content: center; margin-bottom: 28px; color: #fff; }
 .about-eyebrow span { width: 7px; height: 7px; border-radius: 50%; background: #bce5a7; }
-.about-hero__heading { position: relative; z-index: 1; display: block; max-width: 1120px; margin: 0 auto; color: var(--about-hero-foreground); }
+.about-hero__heading { position: relative; z-index: 1; display: block; width: 100%; max-width: none; margin: 0 auto; color: var(--about-hero-foreground); }
 .about-hero__bottom { position: relative; z-index: 1; display: flex; justify-content: center; margin-top: 28px; }
 .about-hero__link,.about-closing__link { display: inline-flex; align-items: center; gap: 18px; min-height: 48px; padding-bottom: 5px; border-bottom: 1px solid currentColor; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; }
 .about-hero__link span,.about-closing__link span { font-size: 20px; font-weight: 400; transition: transform 180ms ease; }
