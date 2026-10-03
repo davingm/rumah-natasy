@@ -9,9 +9,9 @@ import {
   CalendarGridRow, CalendarHeadCell, CalendarHeader, CalendarHeading, CalendarNext,
   CalendarPrev, CalendarRoot,
 } from 'reka-ui'
-import { apiFetch } from '../lib/api'
 import { formatRupiah } from '../stores/booking'
-import Navbar from '../components/app/Navbar.vue'
+import Stepper from '../components/ui/Stepper.vue'
+import { useTheme as useAppTheme } from '../composables/theme'
 
 /* ───────────────────────── Types & constants ───────────────────────── */
 
@@ -104,15 +104,29 @@ Icon.props = ['name', 'size']
 /* ───────────────────────── State ───────────────────────── */
 
 const router = useRouter()
-const navigationLinks = [{ label: 'Tentang', to: '/about' }]
+const { resolvedMode, setMode } = useAppTheme()
+function selectTheme(nextTheme: 'light' | 'dark') {
+  setMode(nextTheme)
+}
 
 const step = ref(1)
 const direction = ref<'forward' | 'back'>('forward')
 const editingFromReview = ref(false)
 
-const categories = ref<Category[]>([])
-const catalogLoading = ref(true)
-const catalogError = ref(false)
+const categories = ref<Category[]>([
+  { id: 'anxiety', name: 'Kecemasan & Panik', base_price: 120000 },
+  { id: 'depression', name: 'Depresi', base_price: 130000 },
+  { id: 'trauma', name: 'Trauma & PTSD', base_price: 150000 },
+  { id: 'relationship', name: 'Hubungan & Pasangan', base_price: 140000 },
+  { id: 'family', name: 'Masalah Keluarga', base_price: 130000 },
+  { id: 'self-esteem', name: 'Kepercayaan Diri', base_price: 110000 },
+  { id: 'burnout', name: 'Burnout & Stres Kerja', base_price: 120000 },
+  { id: 'grief', name: 'Duka & Kehilangan', base_price: 130000 },
+  { id: 'sleep', name: 'Masalah Tidur', base_price: 110000 },
+  { id: 'phobia', name: 'Fobia', base_price: 120000 },
+  { id: 'teen', name: 'Kesehatan Mental Remaja', base_price: 120000 },
+  { id: 'growth', name: 'Pengembangan Diri', base_price: 100000 },
+])
 
 const defaultForm = () => ({
   consultation: 'Video Call', categoryId: '', complaint: '', name: '',
@@ -144,7 +158,7 @@ function restoreDraft() {
     const f = d?.form ?? {}
     form.value = {
       consultation: ['Video Call', 'Tatap Muka'].includes(f.consultation) ? f.consultation : 'Video Call',
-      categoryId: str(f.categoryId, 40),
+      categoryId: categories.value.some(c => String(c.id) === str(f.categoryId, 40)) ? str(f.categoryId, 40) : '',
       complaint: str(f.complaint, 2000),
       name: str(f.name, 80),
       country: countries.some(c => c.code === f.country) ? f.country : 'ID',
@@ -285,7 +299,7 @@ const message = computed(() => [
   '*Data Pemohon*', `Nama: ${cleanName(form.value.name)}`, `Nomor WhatsApp: ${normalizedPhone.value}`, '',
   '*Rencana Konsultasi*', `Jenis: ${form.value.consultation}`,
   `Kategori: ${selectedCategory.value?.name ?? '-'}`,
-  `Acuan biaya: ${categoryPrice.value || 'Dikonfirmasi dengan psikolog'}`,
+  `Harga mulai: ${categoryPrice.value || 'Dikonfirmasi dengan psikolog'}`,
   ...(topics.value.length ? [`Topik: ${topics.value.join(', ')}`] : []),
   `Durasi: ${durationLabel.value}`,
   `Tanggal yang diinginkan: ${longDate(form.value.date)}`,
@@ -301,20 +315,6 @@ const whatsappUrl = computed(() => `https://wa.me/${WA_NUMBER}?text=${encodeURIC
 /* ───────────────────────── Aksi ───────────────────────── */
 
 const smooth = (): ScrollBehavior => (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth')
-
-async function loadCatalog() {
-  catalogLoading.value = true
-  catalogError.value = false
-  try {
-    const response = await apiFetch('public/categories')
-    categories.value = (response?.data ?? []) as Category[]
-  } catch {
-    catalogError.value = true
-  } finally {
-    catalogLoading.value = false
-    if (!selectedCategory.value) { form.value.categoryId = ''; step.value = 1 }
-  }
-}
 
 async function afterStepChange() {
   await nextTick()
@@ -404,7 +404,6 @@ watch(durationChoice, v => {
 
 onMounted(async () => {
   clockTimer = window.setInterval(() => { now.value = new Date() }, 30_000)
-  await loadCatalog()
   if (form.value.date && form.value.date < today.value) {
     form.value.date = ''
     form.value.time = ''
@@ -419,12 +418,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Navbar
-    :brand="{ name: 'Rumah Nafasy', href: '/', mark: '', ariaLabel: 'Beranda Rumah Nafasy' }"
-    :links="navigationLinks"
-  />
-
-  <main class="page">
+  <main class="page" :data-theme="resolvedMode">
     <div class="layout">
       <!-- Ringkasan hidup: terisi seiring pengguna melangkah -->
       <aside class="summary" aria-labelledby="summary-title">
@@ -443,9 +437,9 @@ onBeforeUnmount(() => {
 
         <div class="price-block">
           <template v-if="selectedCategory">
-            <span class="price-label">Acuan biaya</span>
+            <span class="price-label">Harga mulai</span>
             <strong class="price-value">{{ categoryPrice }}</strong>
-            <small>per sesi 60 menit. Biaya akhir dikonfirmasi psikolog.</small>
+            <small>per sesi 60 menit. Harga dapat berbeda menurut psikolog dan durasi.</small>
           </template>
           <small v-else>Pilih kategori untuk melihat acuan biaya.</small>
         </div>
@@ -461,9 +455,31 @@ onBeforeUnmount(() => {
       </aside>
 
       <section ref="contentRef" class="content">
-        <button class="back-link" type="button" @click="back">
-          <Icon name="arrow-left" :size="16" /> {{ step === 1 ? 'Kembali ke beranda' : 'Kembali' }}
-        </button>
+        <div class="content-tools">
+          <button class="back-link" type="button" @click="back">
+            <Icon name="arrow-left" :size="16" /> {{ step === 1 ? 'Kembali ke beranda' : 'Kembali' }}
+          </button>
+          <div class="theme-switch" role="group" aria-label="Pilih tema tampilan">
+            <button
+              type="button"
+              :class="{ active: resolvedMode === 'light' }"
+              :aria-pressed="resolvedMode === 'light'"
+              @click="selectTheme('light')"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+              <span>Terang</span>
+            </button>
+            <button
+              type="button"
+              :class="{ active: resolvedMode === 'dark' }"
+              :aria-pressed="resolvedMode === 'dark'"
+              @click="selectTheme('dark')"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></svg>
+              <span>Gelap</span>
+            </button>
+          </div>
+        </div>
 
         <header class="heading">
           <p class="step-meta">Langkah {{ step }} dari 4</p>
@@ -471,23 +487,7 @@ onBeforeUnmount(() => {
           <p class="intro">{{ stepDescriptions[step - 1] }}</p>
         </header>
 
-        <ol class="stepper" aria-label="Progres pengajuan">
-          <li
-            v-for="(label, i) in stepLabels" :key="label" class="step"
-            :class="{ done: step > i + 1, current: step === i + 1 }"
-            :aria-current="step === i + 1 ? 'step' : undefined"
-          >
-            <button v-if="step > i + 1" type="button" class="step-btn" @click="goBackTo(i + 1)">
-              <span class="step-dot"><Icon name="check" :size="14" /></span>
-              <span class="step-label">{{ label }}</span>
-              <span class="sr-only">, selesai. Kembali ke langkah ini</span>
-            </button>
-            <span v-else class="step-btn">
-              <span class="step-dot">{{ i + 1 }}</span>
-              <span class="step-label">{{ label }}</span>
-            </span>
-          </li>
-        </ol>
+        <Stepper :steps="stepLabels" :current-step="step" @step-select="goBackTo" />
 
         <Transition :name="direction === 'forward' ? 'step-fwd' : 'step-back'" mode="out-in">
           <!-- ───────── Langkah 1: layanan ───────── -->
@@ -508,22 +508,14 @@ onBeforeUnmount(() => {
 
             <fieldset id="category-group" class="group" tabindex="-1">
               <legend>Kategori layanan</legend>
-              <p class="group-hint">Harga acuan untuk satu sesi 60 menit.</p>
+              <p class="group-hint">Harga mulai untuk satu sesi 60 menit. Harga akhir dikonfirmasi dengan psikolog.</p>
 
-              <div v-if="catalogLoading" class="grid-2" aria-busy="true" aria-label="Memuat kategori">
-                <span v-for="n in 4" :key="n" class="skeleton" />
-              </div>
-              <div v-else-if="catalogError" class="notice error" role="alert">
-                <p>Kategori dan harga belum bisa dimuat. Periksa koneksi Anda, lalu coba lagi.</p>
-                <button type="button" class="btn secondary small" @click="loadCatalog"><Icon name="refresh" :size="16" /> Muat ulang</button>
-              </div>
-              <p v-else-if="!categories.length" class="notice">Belum ada kategori layanan yang tersedia.</p>
-              <div v-else class="grid-2">
+              <div class="grid-2">
                 <label v-for="item in categories" :key="item.id" class="opt">
                   <input v-model="form.categoryId" type="radio" name="category" :value="String(item.id)" />
                   <span class="face category">
                     <strong>{{ item.name }}</strong>
-                    <span class="price">{{ formatRupiah(Number(item.base_price)) }} <small>/ sesi</small></span>
+                    <span class="price">Mulai {{ formatRupiah(Number(item.base_price)) }} <small>/ sesi</small></span>
                     <span class="dot" aria-hidden="true" />
                   </span>
                 </label>
@@ -722,7 +714,7 @@ onBeforeUnmount(() => {
                 <dt>Layanan</dt>
                 <dd>
                   {{ form.consultation }} · {{ selectedCategory?.name }}
-                  <small>{{ durationLabel }}<template v-if="categoryPrice"> · acuan {{ categoryPrice }} / sesi 60 menit</template></small>
+                  <small>{{ durationLabel }}<template v-if="categoryPrice"> · mulai {{ categoryPrice }} / sesi 60 menit</template></small>
                 </dd>
                 <button type="button" class="edit" @click="edit(1)"><Icon name="edit" :size="14" /> Ubah<span class="sr-only"> layanan</span></button>
               </div>
@@ -1120,5 +1112,272 @@ button.step-btn { cursor: pointer; }
   .review-row dt { grid-column: 1 / -1; }
   .review-row dd { grid-column: 1; }
   .review-row .edit { grid-column: 2; grid-row: 2; }
+}
+</style>
+
+<style scoped>
+/* Arah visual baru: bidang kerja berwarna gading dengan panel hijau editorial. */
+.page {
+  --background: #f3f1e8;
+  --surface: #fffef9;
+  --text: #233a32;
+  --muted: #69776f;
+  --line: #d4d9cf;
+  --accent: #285044;
+  --accent-hover: #1f4036;
+  --accent-soft: #e7eee7;
+  --ring: rgb(40 80 68 / 18%);
+  --ink: #1d3a31;
+  --inverse-text: #fffef9;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--text);
+  color-scheme: light;
+}
+
+.content-tools { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex: 0 0 auto; }
+.theme-switch {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.theme-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.theme-switch button.active {
+  background: var(--accent);
+  color: var(--inverse-text);
+}
+
+.theme-switch button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-switch svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 330px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.summary {
+  position: relative;
+  top: auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 38px 30px;
+  border: 0;
+  border-radius: 2px;
+  background: #23483d;
+  color: #f5f3e9;
+  --text: #f5f3e9;
+  --ink: #fffef9;
+  --muted: #c2d0c7;
+  --line: #45665b;
+  --surface: #2b5347;
+  --background: #23483d;
+  --accent: #d9e89a;
+  --accent-soft: #345b4e;
+  --ring: rgb(217 232 154 / 20%);
+}
+
+:global(.page[data-theme='dark']) {
+  --background: #000;
+  --surface: #0c0c0c;
+  --text: #f4f4ef;
+  --muted: #a3a39d;
+  --line: #383834;
+  --accent: #94bd9d;
+  --accent-hover: #a7cdae;
+  --accent-soft: #17221a;
+  --ring: rgb(148 189 157 / 22%);
+  --ink: #f4f4ef;
+  --inverse-text: #111;
+  background: var(--background);
+  color: var(--text);
+  color-scheme: dark;
+}
+
+:global(.page[data-theme='dark']) .summary {
+  background: #050505;
+  --text: #f4f4ef;
+  --ink: #fffef9;
+  --muted: #a3a39d;
+  --line: #292929;
+  --surface: #0c0c0c;
+  --background: #050505;
+  --accent: #94bd9d;
+  --accent-soft: #17221a;
+  --ring: rgb(148 189 157 / 20%);
+}
+
+:global(.page[data-theme='dark']) .btn.primary {
+  background: #1a7f37;
+  color: #fff;
+}
+
+:global(.page[data-theme='dark']) .btn.primary:hover { background: #176f31; }
+
+:global(.page[data-theme='dark']) .actions {
+  border-color: #292929;
+  background: rgb(0 0 0 / 96%);
+}
+
+.summary h2 {
+  margin-bottom: 26px;
+  font-size: 19px;
+  letter-spacing: -0.025em;
+}
+
+.summary-list { gap: 20px; }
+.summary-list dt { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+.summary-list dd { font-size: 14px; }
+.price-block { border-top-style: solid; }
+.price-value { font-size: 32px; }
+.trust { border-top-color: var(--line); }
+.trust li svg { color: var(--accent); }
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 24px clamp(24px, 4vw, 64px) 18px;
+}
+.content-tools .back-link { min-height: 38px; }
+.back-link { color: var(--muted); }
+.back-link:hover { color: var(--accent); }
+.heading { margin-top: 24px; }
+.step-meta { color: var(--accent); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+h1 {
+  max-width: 15ch;
+  color: var(--ink);
+  font-size: clamp(36px, 5vw, 54px);
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  line-height: 1.02;
+}
+.intro { max-width: 50ch; margin-top: 14px; font-size: 16px; }
+
+.panel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: clamp(22px, 3vw, 36px);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 2px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgb(37 54 44 / 5%);
+}
+
+legend { font-size: 16px; }
+.group + .group { margin-top: 28px; }
+.group-hint { margin-top: 3px; }
+.grid-2 { gap: 10px; }
+#category-group .grid-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.face { border-radius: 2px; }
+.card .icon-tile { border-radius: 2px; }
+.category { min-height: 104px; }
+.category strong { font-size: 13px; }
+.price { font-size: 15px; }
+.seg { border-radius: 2px; }
+.chip { border-radius: 2px; }
+.field { border-radius: 2px; }
+.phone-row { gap: 10px; }
+.calendar { border-radius: 2px; }
+.calendar-nav { border-radius: 2px; }
+.calendar-day { border-radius: 2px; }
+.pill { border-radius: 2px; }
+.schedule-note { border-radius: 2px; }
+.review-row { padding: 20px 0; }
+.edit { border-radius: 2px; }
+.wa-preview { border-radius: 2px; }
+.bubble { border-radius: 2px; }
+.btn { min-height: 52px; border-radius: 2px; }
+.btn.primary { background: #285044; }
+.btn.primary:hover { background: #1f4036; }
+.btn.secondary { border-radius: 2px; }
+.actions { margin-top: 22px; }
+.actions, .footnote { flex: 0 0 auto; }
+
+@media (max-width: 1050px) {
+  .layout { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); gap: 0; padding: 0; }
+  .summary { padding: 30px 22px; }
+  .content { padding-right: 28px; padding-left: 28px; }
+  #category-group .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); height: 100%; max-width: none; gap: 0; padding: 0; }
+  .summary { display: none; }
+  .content { padding: 20px 22px 12px; }
+  .actions {
+    margin-right: -22px;
+    margin-left: -22px;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: rgb(243 241 232 / 96%);
+    backdrop-filter: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .content { padding: 12px 16px 8px; }
+  .content-tools { gap: 8px; }
+  .content-tools .back-link { font-size: 12px; }
+  .theme-switch { gap: 1px; padding: 2px; }
+  .theme-switch button { gap: 4px; min-height: 30px; padding: 0 7px; font-size: 11px; }
+  .theme-switch svg { width: 13px; height: 13px; }
+  .heading { margin-top: 8px; }
+  .schedule { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 520px) {
+  .panel { padding: 20px 16px; }
+  .actions { margin-right: -16px; margin-left: -16px; padding-right: 16px; padding-left: 16px; }
+  #category-group .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .category { min-height: 92px; padding: 12px; }
 }
 </style>

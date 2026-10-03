@@ -301,7 +301,7 @@ onUnmounted(() => {
   --toggle-text: #6b7280;
 }
 .ve-page[data-theme='dark'] {
-  --bg: #0f1117;
+  --bg: #000000;
   --text: #f0f2f5;
   --text-muted: #8992a2;
   --border: #272b36;

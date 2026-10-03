@@ -9,6 +9,8 @@ function getStoredMode(): ThemeMode {
   // Legacy key dari versi toggle lama
   const legacy = localStorage.getItem('rn.theme')
   if (legacy === 'dark' || legacy === 'light') return legacy
+  const appLegacy = localStorage.getItem('rumah-nafasy-theme')
+  if (appLegacy === 'dark' || appLegacy === 'light') return appLegacy
   return 'system'
 }
 
@@ -34,6 +36,7 @@ function applyTheme() {
   const resolved = resolvedMode.value
   document.documentElement.dataset.theme = resolved
   localStorage.setItem('rn.theme.mode', mode.value)
+  if (mode.value !== 'system') localStorage.setItem('rumah-nafasy-theme', mode.value)
 }
 
 const resolvedMode = computed<ThemeMode>(() =>

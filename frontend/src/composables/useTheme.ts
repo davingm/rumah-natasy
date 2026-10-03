@@ -1,43 +1,17 @@
-﻿import { ref } from 'vue'
+import { computed } from 'vue'
+import { useTheme as useThemeMode } from './theme'
 
-type Theme = 'light' | 'dark'
-const STORAGE_KEY = 'rumah-nafasy-theme'
-const theme = ref<Theme>('light')
+export type Theme = 'light' | 'dark'
 
-const applyTheme = (nextTheme: Theme) => {
-  theme.value = nextTheme
+const { mode, resolvedMode, setMode } = useThemeMode()
+const theme = computed<Theme>(() => resolvedMode.value === 'dark' ? 'dark' : 'light')
 
-  if (typeof document !== 'undefined') {
-    document.documentElement.dataset.theme = nextTheme
-  }
-
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, nextTheme)
-  }
+function initializeTheme() {
+  setMode(mode.value)
 }
 
-const initializeTheme = () => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  const savedTheme = window.localStorage.getItem(STORAGE_KEY)
-  const initialTheme: Theme =
-    savedTheme === 'dark' || savedTheme === 'light'
-      ? savedTheme
-      : window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-
-  applyTheme(initialTheme)
-}
-
-if (typeof window !== 'undefined') {
-  initializeTheme()
-}
-
-const toggleTheme = () => {
-  applyTheme(theme.value === 'light' ? 'dark' : 'light')
+function toggleTheme() {
+  setMode(theme.value === 'light' ? 'dark' : 'light')
 }
 
 export const useTheme = () => ({

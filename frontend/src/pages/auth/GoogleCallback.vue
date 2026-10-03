@@ -99,7 +99,7 @@ function backToLogin() {
 </script>
 
 <template>
-  <div class="min-h-svh bg-[var(--bg,#0f1117)] text-[var(--text,#f0f2f5)]" data-theme="dark">
+  <div class="min-h-svh bg-[var(--bg,#000000)] text-[var(--text,#f0f2f5)]" data-theme="dark">
     <div class="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center px-6 text-center">
       <img src="/icons/64.png" alt="" aria-hidden="true" class="mb-6 h-12 w-12" />
 

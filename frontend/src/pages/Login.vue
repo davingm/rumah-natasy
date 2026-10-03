@@ -276,7 +276,7 @@ onMounted(() => {
   --toggle-text: #8992a2;
 }
 .login-page[data-theme='dark'] {
-  --bg: #0f1117;
+  --bg: #000000;
   --text: #f0f2f5;
   --text-muted: #8992a2;
   --border: #2a2d36;

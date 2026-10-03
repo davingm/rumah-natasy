@@ -473,7 +473,7 @@ async function handleRegister() {
   --strength-empty: #e5e7eb;
 }
 .reg-page[data-theme='dark'] {
-  --bg: #0f1117;
+  --bg: #000000;
   --text: #f0f2f5;
   --text-muted: #8992a2;
   --border: #272b36;
