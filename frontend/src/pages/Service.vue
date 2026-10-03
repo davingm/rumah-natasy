@@ -352,14 +352,14 @@ const faqs = [
   .service-section-head__copy { gap: 16px; }
   .service-list { margin-top: 42px; }
   .service-offerings { min-height: 0; padding: 72px 0 40px; }
-  .service-offering-cards { padding-bottom: clamp(180px,28svh,280px); }
-  .service-scroll-stack :deep(.service-stack-card) { grid-template-columns: 1fr; height: 78svh; gap: 12px; padding: 18px 16px; border-radius: 18px; }
+  .service-offering-cards { padding-bottom: 48px; }
+  .service-scroll-stack :deep(.service-stack-card) { grid-template-columns: 1fr; height: auto !important; min-height: 0; gap: 16px; margin-bottom: 22px !important; padding: 20px 18px; border-radius: 14px; transform: none !important; z-index: auto !important; will-change: auto; }
   .service-stack-card__copy .service-item__tag { margin-bottom: 4px; font-size: 9px; }
   .service-stack-card__copy h3 { margin-top: 6px; font-size: clamp(1.65rem,7vw,2.25rem); }
-  .service-stack-card__copy .service-item__description { margin-top: 9px; font-size: 12px; line-height: 1.55; }
+  .service-stack-card__copy .service-item__description { margin-top: 9px; font-size: 13px; line-height: 1.6; }
   .service-stack-card__cost { gap: 2px; margin-top: 10px; }
   .service-stack-card__copy ul { gap: 5px; margin-top: 10px; font-size: 10px; }
-  .service-stack-card__image,.service-stack-card__image img { min-height: 0; height: 17svh; }
+  .service-stack-card__image,.service-stack-card__image img { min-height: 0; height: clamp(160px,48vw,220px); }
   .service-item { grid-template-columns: 30px minmax(0,1fr); gap: 14px; padding: 25px 0; }
   .service-item__aside { grid-column: 2; flex-direction: row; align-items: center; }
   .service-note { margin-left: 44px; }

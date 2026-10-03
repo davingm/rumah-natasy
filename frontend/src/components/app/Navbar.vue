@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
+import { gsap } from 'gsap'
 import { useTheme } from '../../composables/useTheme'
 import SpecularButton from '../ui/SpecularButton.vue'
 
@@ -23,6 +24,28 @@ defineProps<{
 const { theme, toggleTheme } = useTheme()
 const mobileOpen = ref(false)
 const navHighlightStates = ref<Record<string, 'entering' | 'active' | 'exiting'>>({})
+let mobileMenuTween: gsap.core.Tween | null = null
+
+const prepareMobileMenu = (element: Element) => {
+  gsap.set(element.querySelectorAll('.mobile-menu-eyebrow, .mobile-menu-link'), { autoAlpha: 0, y: 26 })
+}
+
+const animateMobileMenu = (element: Element) => {
+  mobileMenuTween?.kill()
+  const items = element.querySelectorAll('.mobile-menu-eyebrow, .mobile-menu-link')
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  mobileMenuTween = gsap.fromTo(items,
+    { autoAlpha: 0, y: 26 },
+    {
+      autoAlpha: 1,
+      y: 0,
+      duration: reducedMotion ? 0.01 : 0.75,
+      stagger: reducedMotion ? 0 : 0.19,
+      ease: 'power3.out',
+      clearProps: 'opacity,visibility,transform',
+    },
+  )
+}
 
 const setNavHighlight = (href: string, state: 'entering' | 'exiting') => {
   navHighlightStates.value = { ...navHighlightStates.value, [href]: state }
@@ -47,6 +70,8 @@ watch(mobileOpen, (open) => {
     document.body.style.width = '100%'
     document.body.style.overflowY = 'scroll'
   } else {
+    mobileMenuTween?.kill()
+    mobileMenuTween = null
     document.body.style.position = ''
     document.body.style.top = ''
     document.body.style.width = ''
@@ -142,15 +167,14 @@ const closeMobile = () => { mobileOpen.value = false }
         <!-- Burger — mobile only -->
         <button
           type="button"
-          class="ml-auto flex h-[34px] w-[34px] flex-col justify-center gap-[5px] rounded-lg border-none bg-transparent p-[7px] md:hidden"
+          class="mobile-menu-trigger ml-auto flex h-[42px] w-[42px] flex-col items-center justify-center gap-[5px] rounded-full border border-[var(--line)] bg-[var(--background)] p-0 md:hidden"
           :aria-label="mobileOpen ? 'Tutup menu' : 'Buka menu'"
           :aria-expanded="mobileOpen"
           aria-controls="mobile-menu"
           @click="mobileOpen = true"
         >
-          <span class="block h-[1.5px] w-full rounded-sm bg-[var(--ink)]" aria-hidden="true" />
-          <span class="block h-[1.5px] w-full rounded-sm bg-[var(--ink)]" aria-hidden="true" />
-          <span class="block h-[1.5px] w-full rounded-sm bg-[var(--ink)]" aria-hidden="true" />
+          <span class="mobile-menu-line" aria-hidden="true" />
+          <span class="mobile-menu-line" aria-hidden="true" />
         </button>
       </nav>
     </div>
@@ -158,47 +182,44 @@ const closeMobile = () => { mobileOpen.value = false }
 
   <!-- MOBILE MENU OVERLAY -->
   <Teleport to="body">
-    <div
-      v-if="mobileOpen"
-      id="mobile-menu"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Menu navigasi"
-      class="fixed inset-0 z-[9999] bg-[var(--background)] flex flex-col px-5 overflow-hidden"
-    >
+    <Transition name="mobile-menu" @before-enter="prepareMobileMenu" @after-enter="animateMobileMenu">
+      <div v-if="mobileOpen" class="mobile-menu-backdrop" @click.self="closeMobile">
+        <section id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu navigasi" class="mobile-menu-panel">
       <!-- Topbar -->
-      <div class="flex items-center justify-between h-[60px] border-b border-[var(--line)] shrink-0">
-        <RouterLink :to="brand.href" class="inline-flex items-center no-underline" @click="closeMobile">
-          <img src="/icons/64.png" alt="" aria-hidden="true" class="w-8 h-8 object-contain" />
+      <div class="mobile-menu-topbar">
+        <RouterLink :to="brand.href" class="mobile-menu-brand" :aria-label="brand.ariaLabel" @click="closeMobile">
+          <img src="/icons/64.png" alt="" aria-hidden="true" />
+          <span>{{ brand.name }}</span>
         </RouterLink>
         <button
           type="button"
-          class="inline-flex items-center justify-center w-8 h-8 bg-transparent border-none cursor-pointer text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+          class="mobile-menu-close"
           aria-label="Tutup menu"
           @click="closeMobile"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M4 4l12 12M16 4L4 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 4l12 12M16 4L4 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
           </svg>
         </button>
       </div>
 
       <!-- Nav links — scrollable -->
-      <nav class="flex flex-col flex-1 overflow-y-auto" aria-label="Menu mobile">
+      <nav class="mobile-menu-nav" aria-label="Menu mobile">
+        <p class="mobile-menu-eyebrow">Jelajahi</p>
         <RouterLink
           v-for="link in links"
           :key="link.label"
           :to="link.to ?? link.href ?? '/'"
-          class="block py-[17px] text-[17px] font-normal text-[var(--muted)] no-underline border-b border-[var(--line)] tracking-tight hover:text-[var(--text)] transition-colors duration-150 first:border-t first:border-[var(--line)]"
+          class="mobile-menu-link"
           @click="closeMobile"
-        >{{ link.label }}</RouterLink>
+        ><span>{{ link.label }}</span><span aria-hidden="true">↗</span></RouterLink>
       </nav>
 
       <!-- Footer: theme switch + CTA -->
-      <div class="shrink-0 flex flex-col gap-3.5 pt-6 pb-8 border-t border-[var(--line)]">
+      <div class="mobile-menu-footer">
         <!-- Theme toggle row -->
-        <div class="flex items-center justify-between">
-          <span class="inline-flex items-center gap-2 text-[14px] font-normal text-[var(--muted)]">
+        <div class="mobile-theme-row">
+          <span class="mobile-theme-label">
             <SunIcon v-if="theme === 'light'" :size="15" aria-hidden="true" />
             <MoonIcon v-else :size="15" aria-hidden="true" />
             {{ theme === 'light' ? 'Mode Terang' : 'Mode Gelap' }}
@@ -210,12 +231,12 @@ const closeMobile = () => { mobileOpen.value = false }
             role="switch"
             :aria-checked="theme === 'dark'"
             :aria-label="theme === 'light' ? 'Aktifkan dark mode' : 'Aktifkan light mode'"
-            class="relative w-11 h-[26px] rounded-full border-none cursor-pointer shrink-0 transition-colors duration-200"
+            class="mobile-theme-switch"
             :class="theme === 'dark' ? 'bg-[var(--ink)]' : 'bg-[var(--line)]'"
             @click="toggleTheme"
           >
             <span
-              class="absolute top-[3px] left-[3px] w-[18px] h-[18px] rounded-full bg-[var(--background)] shadow-sm transition-transform duration-200"
+              class="mobile-theme-knob"
               :class="theme === 'dark' ? 'translate-x-[18px]' : 'translate-x-0'"
             />
           </button>
@@ -224,15 +245,53 @@ const closeMobile = () => { mobileOpen.value = false }
         <!-- CTA -->
         <RouterLink
           to="/form"
-          class="flex items-center justify-center h-[50px] rounded-xl bg-[var(--ink)] text-[var(--inverse-text)] text-[15px] font-semibold no-underline tracking-tight hover:opacity-80 transition-opacity duration-150"
+          class="mobile-menu-cta"
           @click="closeMobile"
         >Ayo Memulai 🫂</RouterLink>
       </div>
-    </div>
+        </section>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
 <style scoped>
+.mobile-menu-trigger { transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
+.mobile-menu-trigger:hover { border-color: var(--ink); background: var(--surface); }
+.mobile-menu-trigger:active { transform: scale(0.96); }
+.mobile-menu-line { display: block; width: 17px; height: 1.5px; border-radius: 2px; background: var(--ink); }
+.mobile-menu-backdrop { position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: flex-end; background: rgb(0 0 0 / 42%); backdrop-filter: blur(3px); }
+.mobile-menu-panel { display: flex; flex-direction: column; width: min(88vw, 390px); height: 100%; height: 100dvh; overflow: hidden; padding: max(12px, env(safe-area-inset-top)) 24px max(18px, env(safe-area-inset-bottom)); border-left: 1px solid var(--line); background: var(--background); color: var(--text); box-shadow: -20px 0 60px rgb(0 0 0 / 14%); transform: translateX(0); }
+.mobile-menu-topbar { display: flex; flex: 0 0 60px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.mobile-menu-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-size: 17px; font-weight: 700; letter-spacing: -0.05em; text-decoration: none; }
+.mobile-menu-brand img { width: 29px; height: 29px; object-fit: contain; }
+.mobile-menu-close { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--text); cursor: pointer; transition: background-color 150ms ease, transform 150ms ease; }
+.mobile-menu-close:hover { background: var(--line); }
+.mobile-menu-close:active { transform: scale(0.95); }
+.mobile-menu-nav { flex: 1; overflow-y: auto; padding: 32px 0; }
+.mobile-menu-eyebrow { margin: 0 0 10px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.mobile-menu-link { display: flex; min-height: 66px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); color: var(--text); font-size: 22px; font-weight: 500; letter-spacing: -0.045em; text-decoration: none; transition: color 150ms ease, padding 150ms ease; }
+.mobile-menu-link:first-of-type { border-top: 1px solid var(--line); }
+.mobile-menu-link > span:last-child { color: var(--muted); font-size: 17px; }
+.mobile-menu-link:hover { padding-left: 5px; color: var(--accent); }
+.mobile-menu-footer { display: flex; flex: 0 0 auto; flex-direction: column; gap: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.mobile-theme-row { display: flex; align-items: center; justify-content: space-between; }
+.mobile-theme-label { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font-size: 14px; }
+.mobile-theme-switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; border: 0; border-radius: 999px; cursor: pointer; transition: background-color 200ms ease; }
+.mobile-theme-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--background); box-shadow: 0 1px 4px rgb(0 0 0 / 18%); transition: transform 200ms ease; }
+.mobile-menu-cta { display: flex; min-height: 52px; align-items: center; justify-content: space-between; padding: 0 18px; border-radius: 4px; background: var(--ink); color: var(--inverse-text); font-size: 15px; font-weight: 650; letter-spacing: -0.02em; text-decoration: none; transition: opacity 150ms ease, transform 150ms ease; }
+.mobile-menu-cta::after { content: '→'; font-size: 20px; }
+.mobile-menu-cta:hover { opacity: 0.88; }
+.mobile-menu-cta:active { transform: scale(0.99); }
+.mobile-menu-enter-active, .mobile-menu-leave-active { transition: background-color 220ms ease; }
+.mobile-menu-enter-active .mobile-menu-panel, .mobile-menu-leave-active .mobile-menu-panel { transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+.mobile-menu-enter-from, .mobile-menu-leave-to { background: rgb(0 0 0 / 0%); }
+.mobile-menu-enter-from .mobile-menu-panel, .mobile-menu-leave-to .mobile-menu-panel { transform: translateX(100%); }
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu-enter-active, .mobile-menu-leave-active,
+  .mobile-menu-enter-active .mobile-menu-panel, .mobile-menu-leave-active .mobile-menu-panel { transition-duration: 1ms; }
+}
+
 .nav-highlight {
   position: relative;
   isolation: isolate;

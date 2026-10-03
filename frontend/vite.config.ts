@@ -12,9 +12,13 @@ export default defineConfig({
     emptyOutDir: true,
   },
   ssgOptions: {
-    // Exclude dashboard & auth routes from SSG — tetap SPA
+    dirStyle: 'nested',
+    // Remove blank lines and whitespace between tags in generated HTML.
+    formatting: 'minify',
+    // Generate full HTML for every public static route. Personalized dashboard
+    // pages stay runtime-rendered because their content depends on a session.
     includedRoutes(paths: string[]) {
-      return paths.filter((path: string) => !path.startsWith('/dashboard') && !path.startsWith('/login') && !path.startsWith('/register'))
+      return paths.filter((path: string) => path.trim() !== '' && !path.startsWith('/dashboard') && !path.includes(':') && !path.includes('*'))
     },
   },
   server: {

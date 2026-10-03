@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { FunctionalComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { parseDate } from '@internationalized/date'
@@ -202,7 +202,7 @@ const longDate = (iso: string) => (iso ? fmtLong.format(dateFrom(iso)) : '')
 const shortDate = (iso: string) => (iso ? fmtShort.format(dateFrom(iso)) : '')
 const toMinutes = (t: string) => { const [hh, mm] = t.split(':').map(Number); return hh * 60 + mm }
 
-const calendarPlaceholder = ref<DateValue>(
+const calendarPlaceholder = shallowRef<DateValue>(
   parseDate(form.value.date && form.value.date >= today.value ? form.value.date : today.value),
 )
 const quickDates = computed(() =>

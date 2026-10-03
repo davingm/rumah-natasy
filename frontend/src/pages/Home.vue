@@ -26,13 +26,7 @@ import HomeFaq from '../components/section/home/HomeFaq.vue'
         Temui psikolog berlisensi secara aman, mudah, dan fleksibel dari rumah.
       </p>
       <div class="hero-actions">
-        <a class="button button-hero" href="#cara-kerja">Mulai Konsultasi <span aria-hidden="true">→</span></a>
-        <a
-          href="#ahli"
-          class="hero-secondary-button"
-        >
-          Lihat Psikolog <span aria-hidden="true">→</span>
-        </a>
+        <a class="button button-hero" href="/form">Mulai Konsultasi </a>
       </div>
     </div>
   </section>
