@@ -38,6 +38,8 @@ const countries: Country[] = [
 const consultationKinds = [
   { value: 'Video Call', icon: 'video', note: 'Online, dari mana saja' },
   { value: 'Tatap Muka', icon: 'pin', note: 'Bertemu langsung dengan psikolog' },
+  { value: 'Cal.com', icon: 'calendar', note: 'Booking di cal.com/nafasy', externalUrl: 'https://cal.com/nafasy' },
+  { value: 'Google Calendar', icon: 'calendar', note: 'Booking lewat Google Calendar', externalUrl: 'https://calendar.google.com/' },
 ]
 const durationOptions: { value: DurationChoice; title: string; unit?: string; note: string }[] = [
   { value: '30', title: '30', unit: 'menit', note: 'Singkat' },
@@ -81,6 +83,7 @@ const ICONS: Record<string, Shape[]> = {
   'arrow-left': [['path', { d: 'M19 12H5' }], ['path', { d: 'm11 6-6 6 6 6' }]],
   video: [['rect', { x: 2, y: 6, width: 14, height: 12, rx: 2 }], ['path', { d: 'm16 10 6-3v10l-6-3' }]],
   pin: [['path', { d: 'M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z' }], ['circle', { cx: 12, cy: 10, r: 3 }]],
+  calendar: [['rect', { x: 3, y: 5, width: 18, height: 16, rx: 2 }], ['path', { d: 'M16 3v4M8 3v4M3 11h18' }]],
   edit: [['path', { d: 'M4 20h4L19 9l-4-4L4 16v4Z' }], ['path', { d: 'm13.5 6.5 4 4' }]],
   lock: [['rect', { x: 4, y: 11, width: 16, height: 10, rx: 2 }], ['path', { d: 'M8 11V7a4 4 0 0 1 8 0v4' }]],
   copy: [['rect', { x: 9, y: 9, width: 12, height: 12, rx: 2 }], ['path', { d: 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1' }]],
@@ -138,7 +141,7 @@ const customMinutes = ref<number | ''>('')
 const topics = ref<string[]>([])
 const touched = ref<Record<string, boolean>>({})
 
-const contentRef = ref<HTMLElement | null>(null)
+const formScrollRef = ref<HTMLElement | null>(null)
 const headingRef = ref<HTMLElement | null>(null)
 const copied = ref(false)
 const confirmReset = ref(false)
@@ -266,6 +269,12 @@ const errors = computed(() => {
 const touch = (k: string) => { touched.value[k] = true }
 const shown = (k: string) => (touched.value[k] ? errors.value[k] ?? '' : '')
 
+function selectConsultation(value: string) {
+  form.value.consultation = value
+  const method = consultationKinds.find(kind => kind.value === value)
+  if (method?.externalUrl) window.location.assign(method.externalUrl)
+}
+
 const summaryRows = computed(() => [
   {
     label: 'Layanan',
@@ -319,7 +328,7 @@ const smooth = (): ScrollBehavior => (window.matchMedia('(prefers-reduced-motion
 async function afterStepChange() {
   await nextTick()
   headingRef.value?.focus({ preventScroll: true })
-  contentRef.value?.scrollIntoView({ behavior: smooth(), block: 'start' })
+  formScrollRef.value?.scrollTo({ top: 0, behavior: smooth() })
 }
 function goTo(n: number, dir: 'forward' | 'back') {
   direction.value = dir
@@ -454,7 +463,7 @@ onBeforeUnmount(() => {
         </button>
       </aside>
 
-      <section ref="contentRef" class="content">
+      <section class="content">
         <div class="content-tools">
           <button class="back-link" type="button" @click="back">
             <Icon name="arrow-left" :size="16" /> {{ step === 1 ? 'Kembali ke beranda' : 'Kembali' }}
@@ -482,21 +491,27 @@ onBeforeUnmount(() => {
         </div>
 
         <header class="heading">
-          <p class="step-meta">Langkah {{ step }} dari 4</p>
           <h1 ref="headingRef" tabindex="-1">{{ stepTitles[step - 1] }}</h1>
           <p class="intro">{{ stepDescriptions[step - 1] }}</p>
         </header>
 
         <Stepper :steps="stepLabels" :current-step="step" @step-select="goBackTo" />
 
-        <Transition :name="direction === 'forward' ? 'step-fwd' : 'step-back'" mode="out-in">
+        <div ref="formScrollRef" class="form-scroll">
+          <Transition :name="direction === 'forward' ? 'step-fwd' : 'step-back'" mode="out-in">
           <!-- ───────── Langkah 1: layanan ───────── -->
           <section v-if="step === 1" key="s1" class="panel">
             <fieldset class="group">
               <legend>Cara konsultasi</legend>
               <div class="grid-2">
                 <label v-for="kind in consultationKinds" :key="kind.value" class="opt">
-                  <input v-model="form.consultation" type="radio" name="consultation" :value="kind.value" />
+                  <input
+                    v-model="form.consultation"
+                    type="radio"
+                    name="consultation"
+                    :value="kind.value"
+                    @change="selectConsultation(kind.value)"
+                  />
                   <span class="face card">
                     <span class="icon-tile"><Icon :name="kind.icon" :size="20" /></span>
                     <span class="copy"><strong>{{ kind.value }}</strong><small>{{ kind.note }}</small></span>
@@ -573,7 +588,7 @@ onBeforeUnmount(() => {
             </fieldset>
 
             <div class="field-block">
-              <label class="field-label" for="complaint">Cerita singkat atau catatan</label>
+              <label class="field-label" for="complaint">Cerita singkat atau catatan (Opsional)</label>
               <textarea
                 id="complaint" v-model="form.complaint" class="field textarea" rows="7" maxlength="2000"
                 placeholder="Contoh: Dua bulan terakhir saya sulit tidur dan sering cemas menjelang kerja. Saya sudah mencoba mengurangi kopi, tetapi belum membantu."
@@ -593,7 +608,7 @@ onBeforeUnmount(() => {
                 <strong>Butuh bantuan segera?</strong>
                 Formulir ini bukan layanan darurat. Jika Anda di Indonesia dan sedang berada dalam krisis atau terpikir menyakiti diri sendiri,
                 hubungi Healing119 dari Kemenkes di 119 ekstensi 8 atau kunjungi
-                <a href="https://healing119.id" target="_blank" rel="noopener noreferrer">healing119.id</a>.
+                <a href="https://healing119.id" target="_blank" rel="noopener noreferrer">www.healing119.id</a>.
               </p>
             </aside>
           </section>
@@ -616,9 +631,12 @@ onBeforeUnmount(() => {
             <div class="field-block">
               <label class="field-label" for="phone">Nomor WhatsApp</label>
               <div class="phone-row" :class="{ invalid: shown('phone') }">
-                <select v-model="form.country" class="field country" aria-label="Kode negara WhatsApp">
-                  <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.name }} ({{ c.dial }})</option>
-                </select>
+                <div class="country-select-wrap">
+                  <img class="country-flag" :src="`/images/flags/${form.country.toLowerCase()}.svg`" alt="" aria-hidden="true" />
+                  <select v-model="form.country" class="field country" aria-label="Kode negara WhatsApp">
+                    <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.name }} ({{ c.dial }})</option>
+                  </select>
+                </div>
                 <input
                   id="phone" v-model="form.phone" class="field" :class="{ invalid: shown('phone') }"
                   type="tel" inputmode="tel" autocomplete="tel-national" :placeholder="selectedCountry.example"
@@ -643,6 +661,7 @@ onBeforeUnmount(() => {
                   >{{ q.label }} <small>{{ q.short }}</small></button>
                 </div>
                 <CalendarRoot
+                  v-slot="{ grid, weekDays }"
                   v-model:placeholder="calendarPlaceholder"
                   :model-value="form.date ? parseDate(form.date) : undefined"
                   :min-value="todayDate"
@@ -660,7 +679,7 @@ onBeforeUnmount(() => {
                     <CalendarHeading class="calendar-heading" />
                     <CalendarNext class="calendar-nav" aria-label="Bulan berikutnya">›</CalendarNext>
                   </CalendarHeader>
-                  <CalendarGrid v-slot="{ grid, weekDays }" class="calendar-grid">
+                  <CalendarGrid class="calendar-grid">
                     <template v-for="month in grid" :key="month.value.toString()">
                       <CalendarGridHead>
                         <CalendarGridRow>
@@ -752,19 +771,20 @@ onBeforeUnmount(() => {
             </div>
             <p class="privacy">WhatsApp akan terbuka dengan pesan ini sebagai draf. Periksa kembali, lalu kirim jika sudah siap.</p>
           </section>
-        </Transition>
+          </Transition>
 
-        <footer class="actions">
-          <p v-if="miniSummary && step < 4" class="mini">{{ miniSummary }}</p>
-          <div class="actions-row">
-            <button v-if="editingFromReview" type="button" class="btn secondary" @click="cancelEdit">Batal</button>
-            <button v-else-if="step > 1" type="button" class="btn secondary" @click="back"><Icon name="arrow-left" :size="18" /> Kembali</button>
-            <span v-else />
-            <button v-if="step < 4" type="button" class="btn primary" @click="next">{{ nextLabel }} <Icon name="arrow-right" :size="18" /></button>
-            <a v-else class="btn primary" :href="whatsappUrl" target="_blank" rel="noopener noreferrer"><Icon name="whatsapp" :size="18" /> Buka WhatsApp</a>
-          </div>
-        </footer>
-        <p class="footnote">Dengan melanjutkan, Anda hanya mengirim permohonan jadwal. Belum ada pembayaran.</p>
+          <footer class="actions">
+            <p v-if="miniSummary && step < 4" class="mini">{{ miniSummary }}</p>
+            <div class="actions-row">
+              <button v-if="editingFromReview" type="button" class="btn secondary" @click="cancelEdit">Batal</button>
+              <button v-else-if="step > 1" type="button" class="btn secondary" @click="back"><Icon name="arrow-left" :size="18" /> Kembali</button>
+              <span v-else />
+              <button v-if="step < 4" type="button" class="btn primary" @click="next">{{ nextLabel }} <Icon name="arrow-right" :size="18" /></button>
+              <a v-else class="btn primary" :href="whatsappUrl" target="_blank" rel="noopener noreferrer"><Icon name="whatsapp" :size="18" /> Buka WhatsApp</a>
+            </div>
+          </footer>
+          <p class="footnote">Dengan melanjutkan, Anda hanya mengirim permohonan jadwal. Belum ada pembayaran.</p>
+        </div>
       </section>
     </div>
   </main>
@@ -773,17 +793,13 @@ onBeforeUnmount(() => {
 <style scoped>
 /* ── Token lokal: turunan dari variabel tema yang sudah ada ── */
 .page {
-  --r-lg: 20px;
-  --r-md: 14px;
-  --accent-soft: color-mix(in srgb, var(--accent) 8%, var(--surface));
-  --ring: color-mix(in srgb, var(--accent) 26%, transparent);
-  --danger: #b42318;
+  --r-md: 14px; --accent-soft: color-mix(in srgb, var(--accent) 8%, var(--surface)); --ring: color-mix(in srgb, var(--accent) 26%, transparent); --danger: #b42318;
   min-height: 100svh;
   color: var(--text);
   background: var(--background);
   font-size: 15px;
   line-height: 1.55;
-}
+} 
 .sr-only {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -804,13 +820,7 @@ legend.sub { font-size: 14px; }
   margin: 0 auto;
   padding: 96px 24px 88px;
 }
-.content { min-width: 0; scroll-margin-top: 84px; }
-
 /* ── Ringkasan (kiri) ── */
-.summary {
-  position: sticky; top: 92px; align-self: start;
-  padding: 24px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface);
-}
 .summary h2 { margin: 0 0 18px; color: var(--ink); font-size: 16px; letter-spacing: -0.02em; }
 .summary-list { display: grid; gap: 14px; margin: 0; }
 .summary-list > div { display: grid; gap: 2px; }
@@ -839,7 +849,6 @@ legend.sub { font-size: 14px; }
 }
 .back-link:hover { color: var(--accent); }
 .heading { margin-top: 18px; }
-.step-meta { margin: 0 0 8px; color: var(--accent); font-size: 14px; font-weight: 650; }
 h1 {
   margin: 0; color: var(--ink); font-family: var(--font-display);
   font-size: clamp(29px, 4vw, 38px); line-height: 1.12; letter-spacing: -0.05em;
@@ -847,29 +856,8 @@ h1 {
 h1:focus { outline: none; }
 .intro { margin: 10px 0 0; max-width: 56ch; color: var(--muted); font-size: 15px; }
 
-.stepper { display: grid; grid-template-columns: repeat(4, 1fr); margin: 28px 0 20px; padding: 0; list-style: none; }
-.step { position: relative; }
-.step:not(:last-child)::after {
-  position: absolute; top: 14px; left: 40px; right: 8px; height: 2px; border-radius: 2px; background: var(--line); content: '';
-}
-.step.done:not(:last-child)::after { background: var(--accent); }
-.step-btn {
-  display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none;
-  color: var(--muted); font: inherit; text-align: left;
-}
-button.step-btn { cursor: pointer; }
-.step-dot {
-  position: relative; z-index: 1; display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px;
-  border: 1.5px solid var(--line); border-radius: 50%; background: var(--background); font-size: 13px; font-weight: 650;
-}
-.step-label { position: relative; z-index: 1; padding-right: 6px; background: var(--background); font-size: 13px; }
-.step.current .step-dot { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px var(--ring); }
-.step.current .step-label { color: var(--text); font-weight: 650; }
-.step.done .step-dot { border-color: var(--accent); background: var(--accent); color: #fff; }
-.step.done .step-label { color: var(--text); }
 
 /* ── Panel & grup ── */
-.panel { padding: 28px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
 .group + .group { margin-top: 32px; }
 .group-hint { margin: 0; color: var(--muted); font-size: 13px; }
 .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
@@ -952,20 +940,14 @@ button.step-btn { cursor: pointer; }
 
 .phone-row { display: grid; grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.2fr); gap: 8px; }
 .phone-row.invalid .country { border-color: var(--danger); }
+.country-select-wrap { position: relative; min-width: 0; }
+.country-flag { position: absolute; z-index: 1; top: 50%; left: 12px; width: 22px; height: 16px; object-fit: cover; transform: translateY(-50%); pointer-events: none; }
 .country { padding-right: 8px; }
+.country-select-wrap .country { padding-left: 44px; }
 .input-suffix { display: flex; align-items: center; gap: 10px; max-width: 220px; }
 .input-suffix span { color: var(--muted); }
 .custom-row { margin-top: 18px; padding: 16px; border: 1px dashed var(--line); border-radius: var(--r-md); }
 
-.notice { margin: 12px 0 0; padding: 16px; border: 1px dashed var(--line); border-radius: var(--r-md); color: var(--muted); font-size: 14px; }
-.notice.error { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); color: var(--danger); }
-.notice p { margin: 0; }
-.skeleton {
-  display: block; min-height: 100px; border-radius: var(--r-md);
-  background: linear-gradient(90deg, var(--line), color-mix(in srgb, var(--line) 35%, transparent), var(--line)); background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
-}
-@keyframes shimmer { to { background-position: -200% 0; } }
 
 .support {
   display: flex; gap: 12px; margin-top: 22px; padding: 16px; border-radius: var(--r-md);
@@ -1061,7 +1043,6 @@ button.step-btn { cursor: pointer; }
   border: 1.5px solid transparent; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 650;
   text-decoration: none; cursor: pointer; transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
 }
-.btn.small { min-height: 40px; padding: 0 14px; font-size: 14px; }
 .btn.primary { background: var(--accent); color: #fff; }
 .btn.primary:hover { background: var(--accent-hover); }
 .btn.primary:active { transform: translateY(1px); }
@@ -1079,6 +1060,7 @@ button.step-btn { cursor: pointer; }
   .page *, .page *::before, .page *::after { transition-duration: 0.01ms !important; animation: none !important; }
   .step-fwd-enter-from, .step-fwd-leave-to, .step-back-enter-from, .step-back-leave-to { transform: none; }
 }
+
 
 /* ── Responsif ── */
 @media (max-width: 860px) {
@@ -1098,12 +1080,6 @@ button.step-btn { cursor: pointer; }
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 520px) {
-  .panel { padding: 20px 16px; }
-  .layout { padding-right: 16px; padding-left: 16px; }
-  .actions { margin-right: -16px; margin-left: -16px; padding-right: 16px; padding-left: 16px; }
-  .stepper { margin: 22px 0 16px; }
-  .step-label { display: none; }
-  .step:not(:last-child)::after { left: 36px; right: 6px; }
   .grid-2 { grid-template-columns: minmax(0, 1fr); }
   .grid-2:has(.category) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .category { min-height: 92px; padding: 12px; }
@@ -1118,17 +1094,7 @@ button.step-btn { cursor: pointer; }
 <style scoped>
 /* Arah visual baru: bidang kerja berwarna gading dengan panel hijau editorial. */
 .page {
-  --background: #f3f1e8;
-  --surface: #fffef9;
-  --text: #233a32;
-  --muted: #69776f;
-  --line: #d4d9cf;
-  --accent: #285044;
-  --accent-hover: #1f4036;
-  --accent-soft: #e7eee7;
-  --ring: rgb(40 80 68 / 18%);
-  --ink: #1d3a31;
-  --inverse-text: #fffef9;
+  --background: #f3f1e8; --surface: #fffef9; --text: #233a32; --muted: #69776f; --line: #d4d9cf; --accent: #285044; --accent-hover: #1f4036; --accent-soft: #e7eee7; --ring: rgb(40 80 68 / 18%); --ink: #1d3a31; --inverse-text: #fffef9;
   width: 100%;
   height: 100vh;
   height: 100dvh;
@@ -1207,29 +1173,11 @@ button.step-btn { cursor: pointer; }
   border-radius: 2px;
   background: #23483d;
   color: #f5f3e9;
-  --text: #f5f3e9;
-  --ink: #fffef9;
-  --muted: #c2d0c7;
-  --line: #45665b;
-  --surface: #2b5347;
-  --background: #23483d;
-  --accent: #d9e89a;
-  --accent-soft: #345b4e;
-  --ring: rgb(217 232 154 / 20%);
+  --text: #f5f3e9; --ink: #fffef9; --muted: #c2d0c7; --line: #45665b; --surface: #2b5347; --background: #23483d; --accent: #d9e89a; --accent-soft: #345b4e; --ring: rgb(217 232 154 / 20%);
 }
 
 :global(.page[data-theme='dark']) {
-  --background: #000;
-  --surface: #0c0c0c;
-  --text: #f4f4ef;
-  --muted: #a3a39d;
-  --line: #383834;
-  --accent: #94bd9d;
-  --accent-hover: #a7cdae;
-  --accent-soft: #17221a;
-  --ring: rgb(148 189 157 / 22%);
-  --ink: #f4f4ef;
-  --inverse-text: #111;
+  --background: #000; --surface: #0c0c0c; --text: #f4f4ef; --muted: #a3a39d; --line: #383834; --accent: #94bd9d; --accent-hover: #a7cdae; --accent-soft: #17221a; --ring: rgb(148 189 157 / 22%); --ink: #f4f4ef; --inverse-text: #111;
   background: var(--background);
   color: var(--text);
   color-scheme: dark;
@@ -1237,15 +1185,7 @@ button.step-btn { cursor: pointer; }
 
 :global(.page[data-theme='dark']) .summary {
   background: #050505;
-  --text: #f4f4ef;
-  --ink: #fffef9;
-  --muted: #a3a39d;
-  --line: #292929;
-  --surface: #0c0c0c;
-  --background: #050505;
-  --accent: #94bd9d;
-  --accent-soft: #17221a;
-  --ring: rgb(148 189 157 / 20%);
+  --text: #f4f4ef; --ink: #fffef9; --muted: #a3a39d; --line: #292929; --surface: #0c0c0c; --background: #050505; --accent: #94bd9d; --accent-soft: #17221a; --ring: rgb(148 189 157 / 20%);
 }
 
 :global(.page[data-theme='dark']) .btn.primary {
@@ -1281,35 +1221,32 @@ button.step-btn { cursor: pointer; }
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  padding: 24px clamp(24px, 4vw, 64px) 18px;
+  padding: 8px clamp(24px, 4vw, 64px) 12px;
 }
-.content-tools .back-link { min-height: 38px; }
+.content-tools .back-link { min-height: 32px; }
 .back-link { color: var(--muted); }
 .back-link:hover { color: var(--accent); }
-.heading { margin-top: 24px; }
-.step-meta { color: var(--accent); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+.heading { margin-top: 4px; }
 h1 {
   max-width: 15ch;
   color: var(--ink);
-  font-size: clamp(36px, 5vw, 54px);
+  font-size: clamp(28px, 3vw, 36px);
   font-weight: 600;
   letter-spacing: -0.06em;
-  line-height: 1.02;
+  line-height: 1.05;
 }
-.intro { max-width: 50ch; margin-top: 14px; font-size: 16px; }
+.intro { max-width: 50ch; margin-top: 4px; font-size: 13px; }
+.content > .stepper { margin: 12px 0 10px; }
 
 .panel {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
   padding: clamp(22px, 3vw, 36px);
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--accent);
-  border-radius: 2px;
-  background: var(--surface);
-  box-shadow: 0 12px 32px rgb(37 54 44 / 5%);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 legend { font-size: 16px; }
@@ -1339,8 +1276,31 @@ legend { font-size: 16px; }
 .btn.primary { background: #285044; }
 .btn.primary:hover { background: #1f4036; }
 .btn.secondary { border-radius: 2px; }
-.actions { margin-top: 22px; }
-.actions, .footnote { flex: 0 0 auto; }
+.actions {
+  position: static;
+  bottom: auto;
+  z-index: auto;
+  margin: 0;
+  padding: 16px clamp(22px, 3vw, 36px) 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  backdrop-filter: none;
+}
+.footnote { margin: 0; padding: 8px clamp(22px, 3vw, 36px) 22px; }
+.form-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 2px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgb(37 54 44 / 5%);
+}
 
 @media (max-width: 1050px) {
   .layout { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); gap: 0; padding: 0; }
@@ -1352,31 +1312,28 @@ legend { font-size: 16px; }
 @media (max-width: 860px) {
   .layout { grid-template-columns: minmax(0, 1fr); height: 100%; max-width: none; gap: 0; padding: 0; }
   .summary { display: none; }
-  .content { padding: 20px 22px 12px; }
-  .actions {
-    margin-right: -22px;
-    margin-left: -22px;
-    border-top: 1px solid var(--line);
-    border-radius: 0;
-    background: rgb(243 241 232 / 96%);
-    backdrop-filter: none;
-  }
+  .content { padding: 8px 22px 10px; }
+  .actions { margin: 0; padding: 14px 22px 0; }
 }
 
 @media (max-width: 640px) {
-  .content { padding: 12px 16px 8px; }
+  .content { padding: 8px 16px 8px; }
   .content-tools { gap: 8px; }
   .content-tools .back-link { font-size: 12px; }
+  .content > .stepper { margin: 10px 0; }
   .theme-switch { gap: 1px; padding: 2px; }
   .theme-switch button { gap: 4px; min-height: 30px; padding: 0 7px; font-size: 11px; }
   .theme-switch svg { width: 13px; height: 13px; }
-  .heading { margin-top: 8px; }
+  .heading { margin-top: 2px; }
+  h1 { font-size: clamp(26px, 6.5vw, 32px); }
+  .intro { margin-top: 3px; font-size: 12px; }
   .schedule { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 520px) {
   .panel { padding: 20px 16px; }
-  .actions { margin-right: -16px; margin-left: -16px; padding-right: 16px; padding-left: 16px; }
+  .actions { padding: 14px 16px 0; }
+  .footnote { padding: 8px 16px 18px; }
   #category-group .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .category { min-height: 92px; padding: 12px; }
 }

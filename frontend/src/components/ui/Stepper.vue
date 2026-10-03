@@ -44,7 +44,7 @@ const emit = defineEmits<{
 .stepper {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 30px 0 22px;
+  margin: 12px 0 10px;
   padding: 0;
   list-style: none;
 }
@@ -105,7 +105,7 @@ button.step-btn:disabled { cursor: default; }
 }
 
 @media (max-width: 520px) {
-  .stepper { margin: 22px 0 16px; }
+  .stepper { margin: 8px 0 10px; }
   .step-label { display: none; }
   .step:not(:last-child)::after { left: 38px; right: 8px; }
 }
